@@ -34,27 +34,6 @@ wire ack_1;
 localparam EMSB = (((MSB-1)-FMSB)-1);
 localparam EMSK = 2**(EMSB+1-1);
 
-always@(negedge rstn or posedge clk) begin
-	if(!rstn) begin
-		rx_data_1 = 0;
-		rx_data_2 = 0;
-	end
-	else if(enable) begin
-		if(ack_1) begin
-			rx_data_1[MSB] = $urandom_range(0,1);
-			rx_data_1[MSB-1:FMSB+1] = $urandom_range(EMSK-20, EMSK+30);
-			rx_data_1[FMSB:0] = $urandom_range(0,2**(FMSB+1+2+FMSB+1-1-1));
-			rx_data_2[MSB] = $urandom_range(0,1);
-			rx_data_2[MSB-1:FMSB+1] = $urandom_range(EMSK-20, EMSK+30);
-			rx_data_2[FMSB:0] = $urandom_range(0,2**(FMSB+1+2+FMSB+1-1-1));
-		end
-	end
-	else begin
-		rx_data_1 = 0;
-		rx_data_2 = 0;
-	end
-end
-
 fp_add #(
 	.MSB(MSB), 
 	.FMSB(FMSB)
@@ -89,6 +68,13 @@ task test1;
 		req_1 = ~req_1;
 		@(posedge ack_1);
 		repeat(10) @(negedge clk);
+		rx_data_1[MSB] = $urandom_range(0,1);
+		rx_data_1[MSB-1:FMSB+1] = $urandom_range(EMSK-32, EMSK+32);
+		rx_data_1[FMSB:0] = $urandom_range(0,2**(FMSB+1+2+FMSB+1-1-1));
+		rx_data_2[MSB] = $urandom_range(0,1);
+		rx_data_2[MSB-1:FMSB+1] = $urandom_range(EMSK-32, EMSK+32);
+		rx_data_2[FMSB:0] = $urandom_range(0,2**(FMSB+1+2+FMSB+1-1-1));
+		repeat(10) @(negedge clk);
 	end
 	enable_n;
 	$display("test1 end");
@@ -96,6 +82,8 @@ endtask
 
 initial begin
 	req_1 = 0;
+	rx_data_1 = 0;
+	rx_data_2 = 0;
 	rstn_p;
 	repeat(3) test1;
 	rstn_n;
@@ -103,8 +91,8 @@ initial begin
 end
 
 initial begin
-  $dumpfile("../work/float_tb.fst");
-	$dumpvars(0, float_tb);
+	$fsdbDumpfile("../work/float_tb.fsdb");
+	$fsdbDumpvars(0, float_tb);
 end
 
 endmodule
