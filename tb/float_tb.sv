@@ -23,8 +23,8 @@ endtask
 
 reg enable;
 
-parameter MSB	= 31;
-parameter FMSB	= 22;
+parameter MSB		= 31;
+parameter FMSB		= 22;
 
 reg [MSB:0] rx_data_1, rx_data_2;
 wire [MSB:0] tx_data_1;
