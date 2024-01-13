@@ -1,6 +1,6 @@
 module fp_add #(
-	parameter MSB	= 31, 
-	parameter FMSB	= 22
+	parameter MSB	= 16, 
+	parameter FMSB	= 9
 )(
 	output ack, 
 	output reg [3:0] cst, nst, 
@@ -18,6 +18,8 @@ module fp_add #(
 wire clk0 = test_se ? clk : async_se ? lck  : clk;
 `endif
 
+wire [FMSB+1+2+FMSB+1-1:0] frac_rx_data_1 = {{(FMSB+1){1'b0}}, 2'b01, rx_data_1[FMSB:0]};
+wire [FMSB+1+2+FMSB+1-1:0] frac_rx_data_2 = {{(FMSB+1){1'b0}}, 2'b01, rx_data_2[FMSB:0]};
 localparam EMSB = (((MSB-1)-FMSB)-1);
 localparam EMSK = 2**(EMSB+1-1);
 reg [EMSB:0] expt, expt_b;
@@ -77,8 +79,8 @@ always@(*) begin
 		st_check_eq0: nst = eq0_1 ? st_rx_data_2 : eq0_2 ? st_tx_data : st_check_expt;
 		st_rx_data_2: nst = st_tx_data;
 		st_check_expt: nst = shift_p ? st_shift : shift_b_p ? st_shift_b : st_add;
-		st_shift: nst = st_add;
-		st_shift_b: nst = st_add;
+		st_shift: nst = st_check_expt;
+		st_shift_b: nst = st_check_expt;
 		st_add: nst = st_adjust;
 		st_adjust: nst = shift_right_p ? st_shift_right : shift_left_p ? st_shift_left : st_tx_data;
 		st_shift_right: nst = st_adjust;
@@ -98,25 +100,25 @@ always@(negedge rstn or posedge clk) begin
 		expt <= 0; frac <= 0;
 		expt_b <= 0; frac_b <= 0;
 	end
-	else begin
+	else if(enable) begin
 		case(nst)
 			st_load: begin
 				expt <= rx_data_1[MSB-1:FMSB+1] - EMSK; 
 				expt_b <= rx_data_2[MSB-1:FMSB+1] - EMSK;
-				frac <= rx_data_1[MSB] ? (~{{(FMSB+1){1'b0}}, 2'b01, rx_data_1[FMSB:0]} + 1) : {{(FMSB+1){1'b0}}, 2'b01, rx_data_1[FMSB:0]};
-				frac_b <= rx_data_2[MSB] ? (~{{(FMSB+1){1'b0}}, 2'b01, rx_data_2[FMSB:0]} + 1) : {{(FMSB+1){1'b0}}, 2'b01, rx_data_2[FMSB:0]};
+				frac <= rx_data_1[MSB] ? (~frac_rx_data_1 + 1) : frac_rx_data_1;
+				frac_b <= rx_data_2[MSB] ? (~frac_rx_data_2 + 1) : frac_rx_data_2;
 			end
 			st_rx_data_2: begin
 				expt <= expt_b;
 				frac <= frac_b;
 			end
 			st_shift: begin
-				expt <= expt + abs_diff_expt;
-				frac <= sign ?  (~(abs_frac >> abs_diff_expt) + 1) : (abs_frac >> abs_diff_expt);
+				expt <= expt + 1;
+				frac <= sign ?  (~(abs_frac >> 1) + 1) : (abs_frac >> 1);
 			end
 			st_shift_b: begin
-				expt_b <= expt_b + abs_diff_expt;
-				frac_b <= sign_b ?  (~(abs_frac_b >> abs_diff_expt) + 1) : (abs_frac_b >> abs_diff_expt);
+				expt <= expt - 1;
+				frac <= sign ?  (~(abs_frac << 1) + 1) : (abs_frac << 1);
 			end
 			st_add: frac <= frac + frac_b;
 			st_shift_right: begin
@@ -132,6 +134,10 @@ always@(negedge rstn or posedge clk) begin
 				expt_b <= expt_b; frac_b <= frac_b;
 			end
 		endcase
+	end
+	else begin
+		expt <= 0; frac <= 0;
+		expt_b <= 0; frac_b <= 0;
 	end
 end
 
@@ -151,6 +157,7 @@ always@(negedge rstn or posedge clk) begin
 			default: tx_data <= tx_data;
 		endcase
 	end
+	else tx_data <= 0;
 end
 
 endmodule
