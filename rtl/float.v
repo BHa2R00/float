@@ -1,6 +1,6 @@
 module fp_add #(
-	parameter MSB	= 16, 
-	parameter FMSB	= 9
+	parameter MSB	= 31, 
+	parameter FMSB	= 22
 )(
 	output ack, 
 	output reg [3:0] cst, nst, 
