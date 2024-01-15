@@ -1,12 +1,31 @@
+module fp_dec #(
+	parameter EMSB		= 7, 
+	parameter FMSB		= 22
+)(
+	output signed [FMSB+1+2+FMSB+1-1:0] frac, 
+	output signed [EMSB:0] expt, 
+	input [1+EMSB+1+FMSB+1-1:0] rx_data 
+);
+
+localparam MSB = 1+EMSB+1+FMSB+1-1;
+localparam EMSK = 2**(EMSB+1-1);
+
+wire [FMSB+1+2+FMSB+1-1:0] frac_rx_data = {{(FMSB+1){1'b0}}, 2'b01, rx_data[FMSB:0]};
+assign expt = rx_data[MSB-1:FMSB+1] - EMSK;
+assign frac = rx_data[MSB] ? (~frac_rx_data + 1) : frac_rx_data;
+
+endmodule
+
+
 module fp_add #(
-	parameter MSB	= 31, 
-	parameter FMSB	= 22
+	parameter EMSB		= 7, 
+	parameter FMSB		= 22
 )(
 	output ack, 
 	output reg [3:0] cst, nst, 
 	input req, 
-	output reg [MSB:0] tx_data, 
-	input [MSB:0] rx_data_1, rx_data_2, 
+	output reg [1+EMSB+1+FMSB+1-1:0] tx_data, 
+	input [1+EMSB+1+FMSB+1-1:0] rx_data_1, rx_data_2, 
 	input enable, 
 `ifdef ASYNC
 	input async_se, lck, test_se, 
@@ -18,9 +37,11 @@ module fp_add #(
 wire clk0 = test_se ? clk : async_se ? lck  : clk;
 `endif
 
-wire [FMSB+1+2+FMSB+1-1:0] frac_rx_data_1 = {{(FMSB+1){1'b0}}, 2'b01, rx_data_1[FMSB:0]};
-wire [FMSB+1+2+FMSB+1-1:0] frac_rx_data_2 = {{(FMSB+1){1'b0}}, 2'b01, rx_data_2[FMSB:0]};
-localparam EMSB = (((MSB-1)-FMSB)-1);
+localparam MSB = 1+EMSB+1+FMSB+1-1;
+wire [EMSB:0] rx_expt, rx_expt_b;
+wire [FMSB+1+2+FMSB+1-1:0] rx_frac, rx_frac_b;
+fp_dec #(.EMSB(EMSB), .FMSB(FMSB)) u1_rx_data(.frac(rx_frac),   .expt(rx_expt),   .rx_data(rx_data_1));
+fp_dec #(.EMSB(EMSB), .FMSB(FMSB)) u2_rx_data(.frac(rx_frac_b), .expt(rx_expt_b), .rx_data(rx_data_2));
 localparam EMSK = 2**(EMSB+1-1);
 reg [EMSB:0] expt, expt_b;
 reg [FMSB+1+2+FMSB+1-1:0] frac, frac_b;
@@ -103,10 +124,10 @@ always@(negedge rstn or posedge clk) begin
 	else if(enable) begin
 		case(nst)
 			st_load: begin
-				expt <= rx_data_1[MSB-1:FMSB+1] - EMSK; 
-				expt_b <= rx_data_2[MSB-1:FMSB+1] - EMSK;
-				frac <= rx_data_1[MSB] ? (~frac_rx_data_1 + 1) : frac_rx_data_1;
-				frac_b <= rx_data_2[MSB] ? (~frac_rx_data_2 + 1) : frac_rx_data_2;
+				expt <= rx_expt;
+				expt_b <= rx_expt_b;
+				frac <= rx_frac;
+				frac_b <= rx_frac_b;
 			end
 			st_rx_data_2: begin
 				expt <= expt_b;
