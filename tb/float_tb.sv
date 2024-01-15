@@ -23,19 +23,19 @@ endtask
 
 reg enable;
 
-parameter MSB		= 31;
-parameter FMSB		= 22;
+parameter EMSB	= 7;
+parameter FMSB	= 22;
+localparam MSB 	= 1+EMSB+1+FMSB+1-1;
 
 reg [MSB:0] rx_data_1, rx_data_2;
 wire [MSB:0] tx_data_1;
 reg req_1;
 wire ack_1;
 
-localparam EMSB = (((MSB-1)-FMSB)-1);
 localparam EMSK = 2**(EMSB+1-1);
 
 fp_add #(
-	.MSB(MSB), 
+	.EMSB(EMSB), 
 	.FMSB(FMSB)
 ) u_fp_add(
 	.ack(ack_1), 
@@ -91,8 +91,8 @@ initial begin
 end
 
 initial begin
-	$fsdbDumpfile("../work/float_tb.fsdb");
-	$fsdbDumpvars(0, float_tb);
+	$dumpfile("../work/float_tb.fst");
+	$dumpvars(0, float_tb);
 end
 
 endmodule
